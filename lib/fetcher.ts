@@ -1,20 +1,32 @@
-export const apiFetch = async (url: string, options: RequestInit = {}) => {
-  let res = await fetch(url, {
+export async function fetchWithAuth(url: string, options: RequestInit = {}) {
+  // 👉 gọi qua FE API (proxy)
+  let res = await fetch("/api/proxy" + url, {
     ...options,
-    credentials: "include",
   });
 
+  // 👉 nếu hết hạn token
   if (res.status === 401) {
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`, {
+    const refreshRes = await fetch("/api/auth/refresh", {
       method: "POST",
-      credentials: "include",
     });
 
-    res = await fetch(url, {
+    if (!refreshRes.ok) {
+      // 👉 logout
+      window.location.href = "/login";
+      return;
+    }
+
+    // 👉 gọi lại request
+    res = await fetch("/api/proxy" + url, {
       ...options,
-      credentials: "include",
     });
   }
 
-  return res;
-};
+  // 👉 tránh crash nếu không phải JSON
+  try {
+    return await res.json();
+  } catch (error) {
+    console.error("fetch error", error);
+    return null;
+  }
+}

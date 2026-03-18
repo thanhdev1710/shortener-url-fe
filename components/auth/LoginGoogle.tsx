@@ -5,8 +5,8 @@ import { Button } from "../ui/button";
 export default function LoginGoogle() {
   return (
     <Button
-      onClick={() =>
-        signIn("google", { redirect: true, redirectTo: "/auth/callback" })
+      onClick={async () =>
+        await signIn("google", { redirect: true, redirectTo: "/auth/callback" })
       }
     >
       LoginGoogle

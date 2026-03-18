@@ -1,31 +1,39 @@
 import { auth } from "@/lib/auth";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-const authRoutes = ["/login", "/auth"];
+const authRoutes = ["/login"];
+
 const protectedRoutes = ["/me"];
 
-export default auth(async (req) => {
+export default auth(async (req: NextRequest) => {
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get("accessToken")?.value;
   const { pathname } = req.nextUrl;
-  console.log(pathname);
 
-  // 👉 nếu ông dùng BE riêng → phải gọi API
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    pathname === "/favicon.ico" ||
+    pathname.match(/\.[^/]+$/)
+  ) {
+    return NextResponse.next();
+  }
+
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/me`, {
-    credentials: "include",
+    headers: {
+      Authorization: "Bearer " + accessToken,
+    },
   });
 
   const isAuth = res.ok;
 
-  console.log("isAuth:::", isAuth);
-
-  // 🔒 chặn login
   if (authRoutes.includes(pathname) && isAuth) {
-    console.log("run 🔒 chặn login");
-    return NextResponse.redirect(new URL("/dashboard", req.url));
+    return NextResponse.redirect(new URL("/me", req.url));
   }
 
-  // 🔒 chặn protected
   if (protectedRoutes.some((route) => pathname.startsWith(route)) && !isAuth) {
-    console.log("run 🔒 chặn protected");
     const url = new URL("/login", req.url);
     url.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(url);
